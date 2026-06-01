@@ -45,16 +45,14 @@ def save(fig, stem):
 # ---------------------------------------------------------------------------
 def fig_comparison():
     sc = M.scenarios_with_ranges()
-    order_keys = ['gas', 'nuclear', 'solar_storage', 'launch', 'launch_ch4',
-                  'refresh_launch', 'it']
+    order_keys = ['gas', 'nuclear', 'solar_storage', 'launch', 'launch_ch4', 'it']
     labels = {
         'gas': 'Natural gas (combustion + upstream CH$_4$)',
         'nuclear': 'Nuclear (firm baseload, lifecycle)',
         'solar_storage': 'PV array + batteries (embodied)',
         'launch': 'Launch: combustion $\\times$ non-CO$_2$ forcing',
         'launch_ch4': 'Launch: propellant CH$_4$ leakage',
-        'refresh_launch': 'GPU-refresh launch mass',
-        'it': 'IT hardware (servers, GPUs; incl. refresh)',
+        'it': 'IT hardware (servers, GPUs)',
     }
     rows = [
         ('Ground - 100% gas CCGT',                     'Ground: 100% gas (CCGT)'),
@@ -176,7 +174,7 @@ def fig_literature():
     CW, COH = C['space'], '#D55E00'
     # point/range estimates on a comparable basis: (label, value, range or None, colour)
     point_rows = [
-        ('This work · low mass\n(10 yr, dawn–dusk, +non-CO$_2$+CH$_4$)', tlo, rlo, CW),
+        ('This work · low mass\n(no servicing, +non-CO$_2$+CH$_4$)', tlo, rlo, CW),
         ('This work · mid mass', tmid, rmid, CW),
         ('This work · high mass', thi, rhi, CW),
         ('Ohs et al. 2025 · Starship\n(5 yr, +battery +re-entry)', 52.1, None, COH),
@@ -269,7 +267,7 @@ def fig_tornado():
 
     ax.set_yticks(y); ax.set_yticklabels([r[0] for r in rows], fontsize=9.5)
     ax.set_xlabel('Space lifecycle GHG intensity (g CO$_2$e kWh$^{-1}$)')
-    ax.set_xlim(20, 100); ax.set_ylim(-1.3, len(rows) - 0.0)
+    ax.set_xlim(20, 135); ax.set_ylim(-1.3, len(rows) - 0.0)
     ax.grid(axis='x', linestyle=':', alpha=0.45)
     save(fig, "sensitivity_tornado")
 
@@ -362,7 +360,7 @@ def fig_methane():
     ax2.plot(leak * 100, spc, color=C['space'], lw=2.2, label='Space: mid mass (right axis)')
     ax2.set_ylabel('Space lifecycle intensity (g CO$_2$e kWh$^{-1}$)', color=C['space'])
     ax2.tick_params(axis='y', labelcolor=C['space'])
-    ax2.set_ylim(30, 45)
+    ax2.set_ylim(58, 80)
 
     lines = ax.get_lines()[:1] + ax2.get_lines()[:1]
     ax.legend(lines, [l.get_label() for l in lines], frameon=False, fontsize=9, loc='upper left')
@@ -396,18 +394,20 @@ def fig_cobenefits():
 
 
 # ---------------------------------------------------------------------------
-# Scenario comparison recomputed for a 5-year mission life with no GPU refresh
+# The optimistic case: in-orbit servicing (bus reused, compute refreshed)
 # ---------------------------------------------------------------------------
-def fig_short_life():
-    sc  = M.scenarios_at_life(5, refresh_count=0)
-    ref = M.scenarios()                      # 10-yr, one-refresh totals (= comparison fig)
-    order_keys = ['gas', 'nuclear', 'solar_storage', 'launch', 'launch_ch4', 'it']
+def fig_serviced():
+    sc  = M.scenarios(serviced=True)         # optimistic: reuse bus, refresh compute
+    ref = M.scenarios()                      # main (conservative, no servicing) totals
+    order_keys = ['gas', 'nuclear', 'solar_storage', 'launch', 'launch_ch4',
+                  'refresh_launch', 'it']
     labels = {
         'gas': 'Natural gas (combustion + upstream CH$_4$)',
         'nuclear': 'Nuclear (firm baseload, lifecycle)',
         'solar_storage': 'PV array + batteries (embodied)',
         'launch': 'Launch: combustion $\\times$ non-CO$_2$ forcing',
         'launch_ch4': 'Launch: propellant CH$_4$ leakage',
+        'refresh_launch': 'Compute-refresh launch mass',
         'it': 'IT hardware (servers, GPUs)',
     }
     rows = [
@@ -435,19 +435,20 @@ def fig_short_life():
                 ax.barh(yi, comp[k], left=left, color=C[k], edgecolor='white',
                         linewidth=0.6, height=0.62)
                 left += comp[k]
-        t = M.total(comp); t10 = M.total(ref[key])
-        ax.plot([t10], [yi], 'D', mfc='white', mec='#333', ms=6, mew=1.2, zorder=6)
+        t = M.total(comp); tmain = M.total(ref[key])
+        ax.plot([tmain], [yi], 'D', mfc='white', mec='#333', ms=6, mew=1.2, zorder=6)
         ax.text(t + 7, yi, f'{t:.0f}', va='center', fontsize=10, fontweight='bold')
 
     ax.set_yticks(y); ax.set_yticklabels([lbl for _, lbl in rows], fontsize=9.5, linespacing=1.25)
     ax.set_xlabel('Lifecycle GHG intensity (g CO$_2$e per kWh delivered)')
-    ax.set_xlim(0, 780); ax.set_title('Five-year mission life, no GPU replacement', fontsize=11)
+    ax.set_xlim(0, 780)
+    ax.set_title('Optimistic case: in-orbit servicing (bus reused, compute refreshed)', fontsize=11)
     ax.grid(axis='x', linestyle=':', alpha=0.5)
     handles = [Patch(facecolor=C[k], label=labels[k]) for k in order_keys]
     handles.append(Line2D([0], [0], marker='D', mfc='white', mec='#333', ls='none',
-                          ms=6, label='10-yr value (comparison figure)'))
+                          ms=6, label='no-servicing value (comparison figure)'))
     ax.legend(handles=handles, loc='lower right', frameon=False, fontsize=8.6)
-    save(fig, "short_life_5yr")
+    save(fig, "serviced")
 
 
 if __name__ == "__main__":
@@ -459,5 +460,5 @@ if __name__ == "__main__":
     fig_methane()
     fig_cobenefits()
     fig_tornado()
-    fig_short_life()
+    fig_serviced()
     print("\nAll figures written to", OUT)

@@ -184,12 +184,20 @@ def heat_pump_power_fraction(t_cold_k, t_hot_k, second_law_eff=0.5):
 
 
 # ----------------------------------------------------------------------------
-# SPACE - GPU refresh (obsolescence every 3-5 years)
-# Radiation at dawn-dusk SSO is modest (Suncatcher: ~750 rad over 5 yr shielded),
-# so refresh is obsolescence-driven, not radiation-driven.
+# SPACE - hardware life, replacement, and the in-orbit-servicing assumption
+# Orbital hardware has a ~5-yr service life (obsolescence; radiation is modest at a
+# dawn-dusk SSO, where Suncatcher rad-tested its TPU for a ~5-yr mission). Over the
+# 10-yr comparison window that is two hardware generations. The CONSERVATIVE default
+# is NO in-orbit servicing: the whole platform is relaunched each generation, as real
+# LEO mega-constellations (Starlink) are replaced rather than serviced. With servicing
+# the bus, array and radiator are reused and only the compute is refreshed -- an
+# optimistic case that depends on an unproven capability (SERVICED=True).
 # ----------------------------------------------------------------------------
-GPU_REFRESH_COUNT  = 1       # number of full IT hardware refreshes over 10 yr
-GPU_MASS_KG_PER_KW = 5.0    # mass of compute hardware replaced per refresh
+HARDWARE_LIFE_YR    = 5      # orbital hardware service life (obsolescence/radiation)
+PLATFORM_BUILDS     = max(1, int(round(LIFE_YR / HARDWARE_LIFE_YR)))   # = 2 over 10 yr
+COMPUTE_GENERATIONS = PLATFORM_BUILDS        # compute swapped each hardware generation
+GPU_MASS_KG_PER_KW  = 5.0    # compute mass relaunched per servicing refresh (bus reused)
+SERVICED            = False  # default: no in-orbit servicing (relaunch whole platform)
 
 # ----------------------------------------------------------------------------
 # SPACE - station-keeping / drag make-up (recurring, launched as propellant+hardware)
@@ -210,7 +218,7 @@ MASS_LOW, MASS_MID, MASS_HIGH = 15.0, 30.0, 60.0   # Starcloud target -> conserv
 
 def space_scenario(mass_kg_per_kw, pv_kgco2_per_kwp=PV_SI_KGCO2_PER_KWP,
                    launch_mult=UPPER_ATM_MULT, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID,
-                   gpu_refresh=GPU_REFRESH_COUNT, leak=CH4_LEAK_CENTRAL,
+                   serviced=None, leak=CH4_LEAK_CENTRAL,
                    pv_mass_factor=1.0, batt_mass_t=None, batt_emb_mt=None,
                    parasitic=SPACE_PARASITIC, stationkeeping=STATIONKEEPING_KG_PER_KW):
     """Return component intensities (g/kWh) for a space datacenter scenario.
@@ -218,7 +226,15 @@ def space_scenario(mass_kg_per_kw, pv_kgco2_per_kwp=PV_SI_KGCO2_PER_KWP,
     Components: 'solar_storage' (PV + battery), 'launch', 'launch_ch4', 'it',
     'refresh_launch'. pv_mass_factor scales PV array size/embodied (e.g. generic-LEO
     oversizing); parasitic scales PV + battery for non-IT facility loads.
+
+    Over the comparison window the compute is renewed COMPUTE_GENERATIONS times.
+    serviced=False (default) is the conservative no-servicing case: the WHOLE platform
+    is relaunched each generation (PLATFORM_BUILDS full builds, no separate compute
+    refresh). serviced=True reuses the bus/array/radiator and relaunches only the
+    compute (one platform build + COMPUTE_GENERATIONS-1 compute refreshes).
     """
+    if serviced is None:
+        serviced = SERVICED
     if batt_mass_t is None:
         batt_mass_t, _, batt_emb_mt = _batt_mass_t, _batt_kg_per_kw, _batt_emb_mt
     # Parasitic (facility/IT) load scales PV array and battery up.
@@ -230,40 +246,50 @@ def space_scenario(mass_kg_per_kw, pv_kgco2_per_kwp=PV_SI_KGCO2_PER_KWP,
     factor_comb = LAUNCH_KGCO2_PER_KG * launch_mult
     factor_leak = propellant_leak_kgco2e_per_kg(leak)
 
-    # Launched mass: bus/PV/structure + battery + radiators + station-keeping.
+    # One full platform: bus/PV/structure + battery + radiators + station-keeping.
     batt_kg_per_kw = batt_mass_t * 1000.0 / (P_GW * 1e6)
     total_mass_kg_per_kw = (mass_kg_per_kw * pv_scale
                             + batt_kg_per_kw + radiator_kg_per_kw_it_ + stationkeeping)
-    mass_t    = total_mass_kg_per_kw * P_GW * 1e6 / 1000.0
-    pv_mt     = pv_kgco2_per_kwp * pv_scale * P_GW * 1e6 / 1e9
+    one_platform_t = total_mass_kg_per_kw * P_GW * 1e6 / 1000.0
+    one_pv_mt      = pv_kgco2_per_kwp * pv_scale * P_GW * 1e6 / 1e9
 
-    # GPU refresh: extra launch mass + extra IT embodied
-    refresh_mass_t    = gpu_refresh * GPU_MASS_KG_PER_KW * P_GW * 1e6 / 1000.0
-    refresh_it_mt     = gpu_refresh * IT_EMBODIED_MT_PER_GW * P_GW
+    # Replacement strategy over the comparison window.
+    if serviced:
+        platform_builds   = 1
+        compute_refreshes = COMPUTE_GENERATIONS - 1     # reuse bus, relaunch compute only
+    else:
+        platform_builds   = PLATFORM_BUILDS             # relaunch whole platform each generation
+        compute_refreshes = 0
+    gens = platform_builds + compute_refreshes          # total compute generations
+
+    mass_t         = platform_builds * one_platform_t
+    refresh_mass_t = compute_refreshes * GPU_MASS_KG_PER_KW * P_GW * 1e6 / 1000.0
+    pv_mt          = platform_builds * one_pv_mt
+    batt_emb_total = platform_builds * batt_emb_mt
+    it_mt          = gens * IT_EMBODIED_MT_PER_GW * P_GW
 
     launch_comb_mt  = mass_t * factor_comb / 1e6
     refresh_comb_mt = refresh_mass_t * factor_comb / 1e6
     leak_mt         = (mass_t + refresh_mass_t) * factor_leak / 1e6
 
     return {
-        "solar_storage":  mt_to_g_per_kwh(pv_mt + batt_emb_mt),
+        "solar_storage":  mt_to_g_per_kwh(pv_mt + batt_emb_total),
         "launch":         mt_to_g_per_kwh(launch_comb_mt),
         "launch_ch4":     mt_to_g_per_kwh(leak_mt),
         "refresh_launch": mt_to_g_per_kwh(refresh_comb_mt),
-        "it":             IT_G_PER_KWH + mt_to_g_per_kwh(refresh_it_mt),
+        "it":             mt_to_g_per_kwh(it_mt),
     }
 
 
 def space_scenario_range(mass_kg_per_kw, pv_kgco2_per_kwp=PV_SI_KGCO2_PER_KWP,
-                         radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID,
-                         gpu_refresh=GPU_REFRESH_COUNT):
+                         radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, serviced=None):
     """(low, central, high) totals varying the non-CO2 multiplier (1.2-3.0x)."""
     low = space_scenario(mass_kg_per_kw, pv_kgco2_per_kwp, UPPER_ATM_MULT_LOW,
-                         radiator_kg_per_kw_it_, gpu_refresh)
+                         radiator_kg_per_kw_it_, serviced=serviced)
     cen = space_scenario(mass_kg_per_kw, pv_kgco2_per_kwp, UPPER_ATM_MULT,
-                         radiator_kg_per_kw_it_, gpu_refresh)
+                         radiator_kg_per_kw_it_, serviced=serviced)
     high = space_scenario(mass_kg_per_kw, pv_kgco2_per_kwp, UPPER_ATM_MULT_HIGH,
-                          radiator_kg_per_kw_it_, gpu_refresh)
+                          radiator_kg_per_kw_it_, serviced=serviced)
     return total(low), total(cen), total(high)
 
 
@@ -365,7 +391,7 @@ NOGAS_HIGH    = nogas_solar_storage(45.0, 2.0, 0.65)   # poor site, reliability-
 
 # Shared IT (base + one refresh) and decarbonised-ground totals incl. PUE, used as
 # reference lines/targets throughout (so figures and break-even stay consistent).
-IT_TOTAL_G_PER_KWH    = IT_G_PER_KWH * (1 + GPU_REFRESH_COUNT)
+IT_TOTAL_G_PER_KWH    = mt_to_g_per_kwh(COMPUTE_GENERATIONS * IT_EMBODIED_MT_PER_GW * P_GW)
 GROUND_NOGAS_TOTAL    = GROUND_PUE * NOGAS_CENTRAL + IT_TOTAL_G_PER_KWH
 GROUND_NUCLEAR_TOTAL  = GROUND_PUE * NUCLEAR_GCO2_PER_KWH + IT_TOTAL_G_PER_KWH
 
@@ -398,14 +424,14 @@ def datacenter_cooling_water_megatons():
 # ----------------------------------------------------------------------------
 # Assemble scenarios
 # ----------------------------------------------------------------------------
-def scenarios(leak=CH4_LEAK_CENTRAL):
-    sl = space_scenario(MASS_LOW, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_LOW, leak=leak)
-    sm = space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, leak=leak)
-    sh = space_scenario(MASS_HIGH, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_HIGH, leak=leak)
+def scenarios(leak=CH4_LEAK_CENTRAL, serviced=None):
+    sl = space_scenario(MASS_LOW, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_LOW, leak=leak, serviced=serviced)
+    sm = space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, leak=leak, serviced=serviced)
+    sh = space_scenario(MASS_HIGH, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_HIGH, leak=leak, serviced=serviced)
 
-    # IT embodied carried by BOTH ground and space at base + one refresh, so it
+    # IT embodied carried by BOTH ground and space over COMPUTE_GENERATIONS builds, so it
     # cancels in the comparison (ground hardware obsolesces on the same cadence).
-    it_total = IT_G_PER_KWH * (1 + GPU_REFRESH_COUNT)
+    it_total = IT_TOTAL_G_PER_KWH
     pue = GROUND_PUE
     return {
         "Ground - 100% gas CCGT":
@@ -440,35 +466,6 @@ def scenarios_with_ranges(leak=CH4_LEAK_CENTRAL, mc=None):
 
 def total(components):
     return sum(v for k, v in components.items() if not k.startswith("_"))
-
-
-def scenarios_at_life(life_yr, refresh_count=0):
-    """Re-express every scenario for a different operating life and GPU-refresh count.
-    One-time terms (embodied orbital hardware and launch) amortise over delivered energy,
-    which scales with life, so they grow by LIFE_YR/life_yr. Operational and generation
-    intensities (gas, nuclear, ground solar+storage) are per-kWh and life-independent --
-    the generation assets have their own lifecycles -- as is the IT term once the build
-    count is fixed. With refresh_count=0 the GPU-refresh launch term vanishes. Used for
-    the short-life (e.g. 5-yr, no-replacement) sensitivity figure."""
-    e_ratio = LIFE_YR / float(life_yr)                 # one-time terms scale by this
-    it_new  = IT_G_PER_KWH * e_ratio * (1 + refresh_count)
-    out = {}
-    for name, comp in scenarios().items():
-        is_space = name.startswith("Space")
-        new = {}
-        for k, v in comp.items():
-            if k == "_range":
-                continue
-            if k == "it":
-                new[k] = it_new
-            elif k == "refresh_launch":
-                new[k] = 0.0 if refresh_count == 0 else v * (refresh_count / GPU_REFRESH_COUNT) * e_ratio
-            elif is_space and k in ("solar_storage", "launch", "launch_ch4"):
-                new[k] = v * e_ratio
-            else:
-                new[k] = v
-        out[name] = new
-    return out
 
 
 # ----------------------------------------------------------------------------
@@ -523,10 +520,10 @@ def sensitivity_table():
          total(space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, leak=CH4_LEAK_LOW)),
          base_space,
          total(space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, leak=CH4_LEAK_HIGH))),
-        ("GPU refresh count", "0", "1", "2",
-         total(space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, gpu_refresh=0)),
+        ("In-orbit servicing", "serviced", "relaunch", "relaunch",
+         total(space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, serviced=True)),
          base_space,
-         total(space_scenario(MASS_MID, radiator_kg_per_kw_it_=RADIATOR_KG_PER_KW_IT_MID, gpu_refresh=2))),
+         base_space),
         ("Ground PV base (g/kWh gen)", "30", "40", "50",
          GROUND_PUE * nogas_solar_storage(30.0) + IT_TOTAL_G_PER_KWH,
          base_ground,
@@ -580,11 +577,11 @@ def monte_carlo(n=40000, seed=0):
         batt_emb_mt = nameplate * 1e6 * bemb / 1e9 * par
         batt_kg_per_kw = batt_mass_t * 1000.0 / (P_GW * 1e6)
         total_mass = mass * par + batt_kg_per_kw + rad + sk
-        mass_t = total_mass * P_GW * 1e6 / 1000.0
-        refresh_mass_t = GPU_REFRESH_COUNT * GPU_MASS_KG_PER_KW * P_GW * 1e6 / 1000.0
-        launch = mt_to_g_per_kwh((mass_t + refresh_mass_t) * comb * mult / 1e6)
-        ch4    = mt_to_g_per_kwh((mass_t + refresh_mass_t) * CH4_KG_PER_KG_PAYLOAD * leak_s * CH4_GWP100 / 1e6)
-        ss     = mt_to_g_per_kwh(pv * par * P_GW * 1e6 / 1e9 + batt_emb_mt)
+        # Conservative (no servicing): the whole platform is relaunched each generation.
+        mass_t = PLATFORM_BUILDS * total_mass * P_GW * 1e6 / 1000.0
+        launch = mt_to_g_per_kwh(mass_t * comb * mult / 1e6)
+        ch4    = mt_to_g_per_kwh(mass_t * CH4_KG_PER_KG_PAYLOAD * leak_s * CH4_GWP100 / 1e6)
+        ss     = mt_to_g_per_kwh(PLATFORM_BUILDS * (pv * par * P_GW * 1e6 / 1e9 + batt_emb_mt))
         return ss + launch + ch4 + it_t
 
     # radiator sampled over full range (areal density, temperature, overhead)
@@ -686,8 +683,11 @@ if __name__ == "__main__":
 
     print(f"Ground PUE {GROUND_PUE}; space parasitic {SPACE_PARASITIC}; "
           f"radiator system overhead {RAD_SYS_OVERHEAD}x; station-keeping "
-          f"{STATIONKEEPING_KG_PER_KW} kg/kW; shared IT (base+refresh) "
+          f"{STATIONKEEPING_KG_PER_KW} kg/kW; shared IT ({COMPUTE_GENERATIONS} gens) "
           f"{IT_TOTAL_G_PER_KWH:.1f} g/kWh")
+    print(f"Hardware life {HARDWARE_LIFE_YR} yr -> {PLATFORM_BUILDS} platform builds over "
+          f"{LIFE_YR} yr. DEFAULT = no in-orbit servicing (relaunch each build); "
+          f"SERVICED=True reuses bus and refreshes compute only.")
     print(f"Decarbonised ground spans nuclear {GROUND_NUCLEAR_TOTAL:.0f} -> "
           f"solar+storage {GROUND_NOGAS_TOTAL:.0f} g/kWh\n")
 

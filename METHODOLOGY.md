@@ -209,13 +209,17 @@ is genuinely asymmetric and that asymmetry favours space.
 ## 8. Shared IT hardware
 
 The embodied carbon of the servers and GPUs is carried **identically on the ground
-and in orbit**. Both refresh GPUs on the same 3–5-year obsolescence cadence (one
-mid-life refresh centrally), so the IT term — about 7 g/kWh delivered at base plus one
-refresh, anchored to the NVIDIA HGX H100 product carbon footprint of 1,312 kg CO₂e per
-8-GPU baseboard (NVIDIA 2025) — **cancels in the comparison**. It is included so the
-absolute intensities are complete, not because it shifts the space-versus-ground
-result. (In orbit, the *launch* of the refresh hardware does not cancel and is counted
-separately.)
+and in orbit**. Both renew compute on the same 3–5-year obsolescence cadence — two
+generations over the ten-year window — so the IT term (about 7 g/kWh delivered,
+anchored to the NVIDIA HGX H100 product carbon footprint of 1,312 kg CO₂e per 8-GPU
+baseboard, NVIDIA 2025) **cancels in the comparison**. It is included so the absolute
+intensities are complete, not because it shifts the space-versus-ground result. What
+does *not* cancel is the cost of renewing the orbital hardware each generation: without
+in-orbit servicing — the conservative default here, matching how LEO mega-constellations
+(Starlink) are operated — the whole platform is relaunched, doubling the orbital launch
+and embodied terms; with servicing (bus/array/radiator reused) only the compute
+(~5 kg/kW) is relaunched. The headline numbers take the no-servicing case; `serviced=True`
+in the model gives the optimistic case (31/41/63).
 
 ## 9. Methane leakage (shared parameter)
 
@@ -250,30 +254,32 @@ All ranges are 5th–95th percentiles from a Monte Carlo of 40,000 draws in whic
 parameter in the table below is sampled jointly from a triangular distribution over
 its (low, central, high) values. **System mass and radiator specific mass are drawn
 independently**, so the favourable low-mass case is not implicitly paired with the
-lightest radiator. Sampling all parameters gives a composite orbital intensity with
-median 59 and 5th–95th range 44–84 g CO₂e/kWh; the decarbonised-ground options give
-81–124 (solar plus storage) and 16–30 (nuclear), and gas 548–707.
+lightest radiator. For the conservative (no-servicing) case, sampling all parameters
+gives a composite orbital intensity with median 104 and 5th–95th range 75–153 g CO₂e/kWh;
+the decarbonised-ground options give 81–124 (solar plus storage) and 16–30 (nuclear),
+and gas 548–707.
 
 Because the non-CO₂ launch multiplier (1.2–1.5–3.0) and several embodied terms are
-right-skewed, the propagated medians sit slightly above the central-parameter point
-estimates (for example the mid-mass orbital median is ~49 against a 41 central value).
-Each figure reports the central estimate as the point value and the Monte Carlo
-interval as the range.
+right-skewed, and full hardware replacement doubles the launch mass, the propagated
+medians sit well above the central-parameter point estimates, and the central can fall
+near the lower bound (for example the mid-mass orbital central is 70, against a Monte
+Carlo median of 85 and a 67–112 range). Each figure reports the central estimate as the
+point value and the Monte Carlo interval as the range.
 
 ## 12. Reconciliation with prior estimates
 
-The orbital estimate here (central range 31–63) sits **broadly in line with Ohs and
+The orbital estimate here (central range 50–114, no servicing) sits **close to Ohs and
 well below Aili** once both are placed on this functional unit.
 
 **Ohs et al. (2025)**, "Dirty Bits in Low-Earth Orbit" — 52 (Starship) to 66
 (Falcon-9) g/kWh for a ~30 W eclipsed CubeSat with a ~4 kWh battery over 5 years,
-counting combustion CO₂ only. This is already close to the basis used here. The
-residual gap is one of inputs, not physics: starting from the mid-mass case (41 g/kWh;
-dawn–dusk orbit, 10-year life, central launch), stripping the non-CO₂ and methane terms
-to a combustion-only launch lowers it to ~28; switching to a heavily eclipsed generic
-LEO with its larger battery and oversized array raises it to ~41; and amortising over a
-5-year rather than 10-year life (doubling all one-time terms) brings it to ~81, into the
-upper part of the Ohs range.
+counting combustion CO₂ only. Our mid-mass case (70) sits just above their range —
+unsurprisingly, since both treat the hardware as replaced rather than serviced. The
+small residual is our stricter launch accounting (we add non-CO₂ forcing and
+propellant-methane leakage; Ohs count combustion CO₂ only), partly offset by our
+near-continuous dawn–dusk orbit against their heavily eclipsed one. Their apparently
+opposite headline — orbit dirtier than ground — follows from the low-carbon ground
+baseline they adopt (34 g/kWh), not from the orbital number.
 
 **Aili et al. (2025)**, *Nature Electronics* — report a life-cycle *carbon usage
 effectiveness* (CUE: total emissions per unit of IT energy), headlined at ~0.72
@@ -347,11 +353,12 @@ Type: **L** literature/official dataset, **D** derived from other parameters,
 | Depth of discharge | 0.30 | 0.40 | 0.50 | A | Few-thousand solstice cycles |
 | Specific energy (Wh/kg) | 150 | 200 | 250 | L | Forward-looking space pack |
 | Embodied (kg CO₂/kWh) | 50 | 60 | 100 | L | Peiseler et al. (2024) |
-| *System mass, station-keeping, refresh* | | | | | |
+| *System mass, hardware life, replacement* | | | | | |
 | Bus+PV+structure (kg/kW) | 15 | 30 | 60 | A | Starcloud (2024); + server/redundancy |
 | Station-keeping (kg/kW) | 0.3 | 1.0 | 3.0 | D | Drag make-up (Picone et al. 2002) |
-| GPU refresh count | 0 | 1 | 2 | A | 3–5 yr obsolescence |
-| Refresh compute (kg/kW) | — | 5.0 | — | A | Boards + servers, bus reused |
+| Hardware life (yr) | — | 5 | — | A | obsolescence/radiation → 2 builds over 10 yr |
+| In-orbit servicing | no | no | yes | A | default: relaunch (Starlink-style); yes = optimistic |
+| Refresh compute (kg/kW) | — | 5.0 | — | A | Boards + servers, if serviced (bus reused) |
 | Space parasitic (× IT) | 1.05 | 1.10 | 1.20 | A | Avionics/ADCS/pumps (no chiller) |
 | *Ground* | | | | | |
 | Gas CCGT (g CO₂e/kWh) | — | 486 | — | L | NREL (2021) |

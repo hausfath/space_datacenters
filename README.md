@@ -17,7 +17,9 @@ input exposed in one file so it can be changed and re-run.
 ## Headline results
 
 Central estimates with 5th–95th percentile ranges from a 40,000-draw Monte Carlo
-over all parameters:
+over all parameters. The orbital case is **conservative**: the hardware has a ~5-year
+service life and, absent proven in-orbit servicing, the whole platform is relaunched
+each generation — as LEO mega-constellations (Starlink) are operated today.
 
 | Configuration | g CO₂e/kWh | Range (5–95%) |
 |---|---:|---|
@@ -25,23 +27,26 @@ over all parameters:
 | Ground — 90% solar + storage, 10% gas backup | 130 | 122–164 |
 | Ground — solar overbuild + storage (near-term decarbonised) | 91 | 81–124 |
 | Ground — nuclear (longer-term decarbonised) | 22 | 16–30 |
-| Space — high mass (conventional radiators) | 63 | 60–105 |
-| Space — mid mass | 41 | 40–64 |
-| Space — low mass (Starcloud target) | 31 | 31–47 |
+| Space — high mass (conventional radiators), no servicing | 114 | 109–193 |
+| Space — mid mass, no servicing | 70 | 67–112 |
+| Space — low mass (Starcloud target), no servicing | 50 | 49–77 |
+| *Space (all tiers) with in-orbit servicing* | *31 / 41 / 63* | *optimistic* |
 
 A few things fall out of this:
 
-- **Against gas, orbit wins by roughly 10–20×.** That result is robust to every
+- **Against gas, orbit wins by roughly 5–12×.** That result is robust to every
   assumption in the model.
-- **"Decarbonised ground" is a range, not a point.** Solar overbuild plus storage
-  (~91) is the near-term option; firm nuclear (~22) is the longer-term one. The
-  orbital tiers (31–63) sit *inside* that range: cleaner than near-term
-  solar-plus-storage at low and mid system mass, overlapping it at high mass, but
-  **not** below firm nuclear, which remains the lowest-carbon option.
-- **The swing variables are launch non-CO₂ forcing, system mass, and methane
-  leakage** — in that order. The non-CO₂ forcing of methalox exhaust is the
-  load-bearing unknown, because the soot emission index of methane-oxygen engines
-  has never been directly measured.
+- **Against near-term decarbonised ground the comparison is close.** Solar overbuild
+  plus storage (~91) is the near-term option; firm nuclear (~22) is the longer-term
+  one. With no in-orbit servicing the low- and mid-mass orbital cases (50, 70) are
+  modestly below near-term solar-plus-storage, the high-mass case (114) is above it,
+  and **none** beats firm nuclear. In-orbit servicing, if it matures, would lower the
+  orbital tiers to 31/41/63 and put them clearly below near-term solar-plus-storage —
+  but that capability has not been demonstrated at scale.
+- **The swing variables are system mass, launch non-CO₂ forcing, and whether the
+  hardware is serviced or relaunched.** The non-CO₂ forcing of methalox exhaust is the
+  load-bearing physical unknown, because the soot emission index of methane-oxygen
+  engines has never been directly measured.
 - **The most durable advantage of orbit is not GHGs at all.** A 1 GW mostly-solar
   ground datacenter needs on the order of 160 km² of panels (more than 2.5× the
   area of Manhattan) and, if evaporatively cooled, several megatonnes of water a
@@ -103,7 +108,7 @@ coded intensities, so the assumptions are visible and adjustable:
 | `figures/methane_leakage.png` | Sensitivity of gas and orbital intensity to the methane-leakage rate. |
 | `figures/land_water.png` | Land footprint and cooling-water co-benefits. |
 | `figures/sensitivity_tornado.png` | One-at-a-time sensitivity of the mid-mass orbital estimate. |
-| `figures/short_life_5yr.png` | The comparison recomputed for a 5-year mission with no GPU replacement; orbital one-time terms roughly double while ground is unchanged (diamonds mark the 10-year values). |
+| `figures/serviced.png` | The optimistic case — in-orbit servicing (bus/array/radiator reused, only compute refreshed); orbital tiers fall to 31/41/63 (diamonds mark the conservative no-servicing values). |
 
 ## Caveats
 
