@@ -10,6 +10,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 
 import space_dc_lca as M
 
@@ -172,13 +173,12 @@ def fig_literature():
     tmid, rmid = tw('Space - mid')
     thi, rhi = tw('Space - high (conv. radiators)')
 
-    CW, COH, COHL = C['space'], '#D55E00', '#E69F00'
+    CW, COH = C['space'], '#D55E00'
     # point/range estimates on a comparable basis: (label, value, range or None, colour)
     point_rows = [
         ('This work · low mass\n(10 yr, dawn–dusk, +non-CO$_2$+CH$_4$)', tlo, rlo, CW),
         ('This work · mid mass', tmid, rmid, CW),
         ('This work · high mass', thi, rhi, CW),
-        ('Ohs et al. 2025 · solar only\n(no eclipse battery)', 6.9, (6.3, 7.5), COHL),
         ('Ohs et al. 2025 · Starship\n(5 yr, +battery +re-entry)', 52.1, None, COH),
         ('Ohs et al. 2025 · Falcon-9', 66.3, None, COH),
     ]
@@ -395,6 +395,61 @@ def fig_cobenefits():
     save(fig, "land_water")
 
 
+# ---------------------------------------------------------------------------
+# Scenario comparison recomputed for a 5-year mission life with no GPU refresh
+# ---------------------------------------------------------------------------
+def fig_short_life():
+    sc  = M.scenarios_at_life(5, refresh_count=0)
+    ref = M.scenarios()                      # 10-yr, one-refresh totals (= comparison fig)
+    order_keys = ['gas', 'nuclear', 'solar_storage', 'launch', 'launch_ch4', 'it']
+    labels = {
+        'gas': 'Natural gas (combustion + upstream CH$_4$)',
+        'nuclear': 'Nuclear (firm baseload, lifecycle)',
+        'solar_storage': 'PV array + batteries (embodied)',
+        'launch': 'Launch: combustion $\\times$ non-CO$_2$ forcing',
+        'launch_ch4': 'Launch: propellant CH$_4$ leakage',
+        'it': 'IT hardware (servers, GPUs)',
+    }
+    rows = [
+        ('Ground - 100% gas CCGT',                     'Ground: 100% gas (CCGT)'),
+        ('Ground - 90% solar+storage / 10% gas',       'Ground: 90% solar + storage,\n10% gas backup'),
+        ('Ground - no gas: solar overbuild + storage', 'Ground: solar overbuild + storage\n(near-term decarbonised)'),
+        ('Ground - nuclear (firm baseload)',           'Ground: nuclear\n(longer-term decarbonised)'),
+        ('Space - high (conv. radiators)',             'Space: high mass\n(conventional radiators)'),
+        ('Space - mid',                                'Space: mid mass'),
+        ('Space - low (Starcloud-target)',             'Space: low mass\n(Starcloud target)'),
+    ]
+    fig, ax = plt.subplots(figsize=(9.4, 6.4))
+
+    g_nuc = M.total(sc['Ground - nuclear (firm baseload)'])
+    g_sol = M.total(sc['Ground - no gas: solar overbuild + storage'])
+    ax.axvspan(g_nuc, g_sol, color='#888888', alpha=0.10, zorder=0)
+    ax.text((g_nuc + g_sol) / 2, len(rows) - 0.4,
+            'decarbonised\nground range', ha='center', va='top', fontsize=8, color='#666')
+
+    y = np.arange(len(rows))[::-1]
+    for yi, (key, _) in zip(y, rows):
+        comp = sc[key]; left = 0
+        for k in order_keys:
+            if comp.get(k, 0) > 0:
+                ax.barh(yi, comp[k], left=left, color=C[k], edgecolor='white',
+                        linewidth=0.6, height=0.62)
+                left += comp[k]
+        t = M.total(comp); t10 = M.total(ref[key])
+        ax.plot([t10], [yi], 'D', mfc='white', mec='#333', ms=6, mew=1.2, zorder=6)
+        ax.text(t + 7, yi, f'{t:.0f}', va='center', fontsize=10, fontweight='bold')
+
+    ax.set_yticks(y); ax.set_yticklabels([lbl for _, lbl in rows], fontsize=9.5, linespacing=1.25)
+    ax.set_xlabel('Lifecycle GHG intensity (g CO$_2$e per kWh delivered)')
+    ax.set_xlim(0, 780); ax.set_title('Five-year mission life, no GPU replacement', fontsize=11)
+    ax.grid(axis='x', linestyle=':', alpha=0.5)
+    handles = [Patch(facecolor=C[k], label=labels[k]) for k in order_keys]
+    handles.append(Line2D([0], [0], marker='D', mfc='white', mec='#333', ls='none',
+                          ms=6, label='10-yr value (comparison figure)'))
+    ax.legend(handles=handles, loc='lower right', frameon=False, fontsize=8.6)
+    save(fig, "short_life_5yr")
+
+
 if __name__ == "__main__":
     fig_comparison()
     fig_breakeven()
@@ -404,4 +459,5 @@ if __name__ == "__main__":
     fig_methane()
     fig_cobenefits()
     fig_tornado()
+    fig_short_life()
     print("\nAll figures written to", OUT)

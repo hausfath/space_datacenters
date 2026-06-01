@@ -103,6 +103,7 @@ coded intensities, so the assumptions are visible and adjustable:
 | `figures/methane_leakage.png` | Sensitivity of gas and orbital intensity to the methane-leakage rate. |
 | `figures/land_water.png` | Land footprint and cooling-water co-benefits. |
 | `figures/sensitivity_tornado.png` | One-at-a-time sensitivity of the mid-mass orbital estimate. |
+| `figures/short_life_5yr.png` | The comparison recomputed for a 5-year mission with no GPU replacement; orbital one-time terms roughly double while ground is unchanged (diamonds mark the 10-year values). |
 
 ## Caveats
 

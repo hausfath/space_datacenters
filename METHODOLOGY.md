@@ -48,6 +48,15 @@ cases — the facility cooling overhead. It excludes end-of-life beyond the reen
 discussion in the main text, and treats the data-transmission term as negligible
 (Section 6).
 
+**A 1 GW orbital facility is a constellation, not a single satellite.** Both detailed
+proposals envisage many co-orbiting satellites flying in close formation, linked by
+free-space optical interconnects: Google's Project Suncatcher uses an ~81-satellite,
+~1 km-radius cluster as its scaling unit, and Starcloud describes a modular 5 GW system
+with kilometre-scale arrays assembled from many such units. Because every quantity here
+is expressed per watt of IT load and per kWh delivered, the result does not depend on
+the exact satellite count — only on the per-watt bus, array, radiator, and battery
+masses a modular constellation must build and launch.
+
 ## 2. Scenarios
 
 | Scenario | Power source |

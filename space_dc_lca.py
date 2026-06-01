@@ -442,6 +442,35 @@ def total(components):
     return sum(v for k, v in components.items() if not k.startswith("_"))
 
 
+def scenarios_at_life(life_yr, refresh_count=0):
+    """Re-express every scenario for a different operating life and GPU-refresh count.
+    One-time terms (embodied orbital hardware and launch) amortise over delivered energy,
+    which scales with life, so they grow by LIFE_YR/life_yr. Operational and generation
+    intensities (gas, nuclear, ground solar+storage) are per-kWh and life-independent --
+    the generation assets have their own lifecycles -- as is the IT term once the build
+    count is fixed. With refresh_count=0 the GPU-refresh launch term vanishes. Used for
+    the short-life (e.g. 5-yr, no-replacement) sensitivity figure."""
+    e_ratio = LIFE_YR / float(life_yr)                 # one-time terms scale by this
+    it_new  = IT_G_PER_KWH * e_ratio * (1 + refresh_count)
+    out = {}
+    for name, comp in scenarios().items():
+        is_space = name.startswith("Space")
+        new = {}
+        for k, v in comp.items():
+            if k == "_range":
+                continue
+            if k == "it":
+                new[k] = it_new
+            elif k == "refresh_launch":
+                new[k] = 0.0 if refresh_count == 0 else v * (refresh_count / GPU_REFRESH_COUNT) * e_ratio
+            elif is_space and k in ("solar_storage", "launch", "launch_ch4"):
+                new[k] = v * e_ratio
+            else:
+                new[k] = v
+        out[name] = new
+    return out
+
+
 # ----------------------------------------------------------------------------
 # Launch-emission-intensity break-even sweep
 # ----------------------------------------------------------------------------
