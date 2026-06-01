@@ -253,15 +253,22 @@ interval as the range.
 
 ## 12. Reconciliation with prior estimates
 
-The orbital estimate here (central range 31–63) sits **between** the two published
-analyses:
+The orbital estimate here (central range 31–63) sits between the two prior analyses:
 
-- **Aili et al. (2025)**, *Nature Electronics* — an optimistic orbital case whose
-  intensity approaches the ~20 g/kWh of an all-renewable terrestrial grid at a 4-year
-  server life, with no explicit eclipse-battery penalty and no reentry term.
 - **Ohs et al. (2025)**, "Dirty Bits in Low-Earth Orbit" — 52 (Starship) to 66
   (Falcon-9) g/kWh for a ~30 W eclipsed CubeSat with a 4 kWh battery over 5 years,
-  counting combustion CO₂ only.
+  counting combustion CO₂ only. This is reported on a basis close to the one used here.
+- **Aili et al. (2025)**, *Nature Electronics* — uses a different metric, life-cycle
+  carbon usage effectiveness (total emissions per unit of IT energy), with absolute
+  values of order 0.6–1.5 kgCO₂e/kWh that are **not directly comparable**, because they
+  include the IT-hardware manufacturing term that cancels in the differential comparison
+  here. Their substantive conclusion is comparative and optimistic: a solar-powered
+  orbital data centre (with carbon-free operation, no explicit eclipse-battery penalty,
+  and no reentry term) **approaches a terrestrial data centre on an all-renewable grid**
+  (grid intensity ~20 gCO₂e/kWh; their reference benchmark) once servers survive about
+  four years, and stays well below medium-carbon-grid and real (Google) data centres.
+  The "~20" is therefore the all-renewable terrestrial *grid* benchmark their orbital
+  case matches, not an absolute orbital intensity.
 
 The gap is one of inputs, not physics. Starting from the mid-mass case (41 g/kWh;
 dawn–dusk orbit, 10-year life, central launch): stripping the non-CO₂ and methane

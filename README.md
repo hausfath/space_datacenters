@@ -97,7 +97,7 @@ coded intensities, so the assumptions are visible and adjustable:
 |---|---|
 | `figures/comparison.png` | Lifecycle GHG intensity by scenario, with uncertainty whiskers. |
 | `figures/launch_breakeven.png` | Orbital intensity vs. effective launch GHG intensity, with the launch factor at which orbit crosses the decarbonised-ground range. |
-| `figures/literature_comparison.png` | This work against published orbital estimates (Aili et al. 2025; Ohs et al. 2025) on a common functional unit. |
+| `figures/literature_comparison.png` | This work against published orbital estimates: Ohs et al. (2025) on a comparable basis, and the comparative conclusion of Aili et al. (2025), who use a different (life-cycle CUE) metric. |
 | `figures/radiator_mass.png` | Radiator specific mass vs. rejection temperature (Stefan–Boltzmann), and the heat-pump power penalty. |
 | `figures/orbit_eclipse.png` | Dawn–dusk SSO vs. generic LEO across the three mass tiers. |
 | `figures/methane_leakage.png` | Sensitivity of gas and orbital intensity to the methane-leakage rate. |

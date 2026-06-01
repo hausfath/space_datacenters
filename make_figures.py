@@ -150,14 +150,18 @@ def fig_breakeven():
 
 
 # ---------------------------------------------------------------------------
-# Comparison with published estimates (common functional unit)
-# Literature values (g CO2e/kWh delivered), as published:
-#   Aili et al. (2025), Nature Electronics: orbital ~20 at 4-yr server life
-#     (best case; solar I2=0, no explicit eclipse-battery penalty, no re-entry,
-#     Falcon-9 kerosene). Terrestrial baselines 20 / 380 / 1050.
+# Comparison with published estimates
 #   Ohs et al. (2025), "Dirty Bits in LEO": orbital 52.1 (Starship) / 66.3
 #     (Falcon-9) at 5-yr with eclipse battery + re-entry; solar-array-only
-#     (no battery) 6.3-7.5; their terrestrial baseline 34.
+#     (no battery) 6.3-7.5; their terrestrial baseline 34. Comparable basis
+#     (g CO2e/kWh delivered).
+#   Aili et al. (2025), Nature Electronics: report a life-cycle CUE (kgCO2e per
+#     IT-kWh; absolute ~0.6-1.5, NOT directly comparable as it includes the
+#     IT-manufacturing term that cancels in our differential comparison). Their
+#     conclusion: orbital solar (I2=0) approaches an all-renewable-grid terrestrial
+#     DC at 4-yr server life. The 20 marker below is that all-renewable terrestrial
+#     GRID intensity (their ref. 88 benchmark), not an orbital absolute. (Their other
+#     grid refs: 380 = medium-carbon = Google scope-2; Google life-cycle CUE 1050.)
 # ---------------------------------------------------------------------------
 def fig_literature():
     sc = M.scenarios_with_ranges()
@@ -174,7 +178,7 @@ def fig_literature():
         ('This work · low mass\n(10 yr, dawn–dusk, +non-CO$_2$+CH$_4$)', tlo, rlo, CW, True, False),
         ('This work · mid mass', tmid, rmid, CW, True, False),
         ('This work · high mass', thi, rhi, CW, True, False),
-        ('Aili et al. 2025\n(4 yr, no battery/re-entry penalty)', 20.0, None, CA, False, True),
+        ('Aili et al. 2025: orbital matches\nall-renewable terrestrial grid (CUE metric)', 20.0, None, CA, False, True),
         ('Ohs et al. 2025 · solar only\n(no eclipse battery)', 6.9, (6.3, 7.5), COHL, True, False),
         ('Ohs et al. 2025 · Starship\n(5 yr, +battery +re-entry)', 52.1, None, COH, True, False),
         ('Ohs et al. 2025 · Falcon-9', 66.3, None, COH, True, False),
