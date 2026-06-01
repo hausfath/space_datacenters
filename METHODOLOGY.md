@@ -253,31 +253,48 @@ interval as the range.
 
 ## 12. Reconciliation with prior estimates
 
-The orbital estimate here (central range 31–63) sits between the two prior analyses:
+The orbital estimate here (central range 31–63) sits **broadly in line with Ohs and
+well below Aili** once both are placed on this functional unit.
 
-- **Ohs et al. (2025)**, "Dirty Bits in Low-Earth Orbit" — 52 (Starship) to 66
-  (Falcon-9) g/kWh for a ~30 W eclipsed CubeSat with a 4 kWh battery over 5 years,
-  counting combustion CO₂ only. This is reported on a basis close to the one used here.
-- **Aili et al. (2025)**, *Nature Electronics* — uses a different metric, life-cycle
-  carbon usage effectiveness (total emissions per unit of IT energy), with absolute
-  values of order 0.6–1.5 kgCO₂e/kWh that are **not directly comparable**, because they
-  include the IT-hardware manufacturing term that cancels in the differential comparison
-  here. Their substantive conclusion is comparative and optimistic: a solar-powered
-  orbital data centre (with carbon-free operation, no explicit eclipse-battery penalty,
-  and no reentry term) **approaches a terrestrial data centre on an all-renewable grid**
-  (grid intensity ~20 gCO₂e/kWh; their reference benchmark) once servers survive about
-  four years, and stays well below medium-carbon-grid and real (Google) data centres.
-  The "~20" is therefore the all-renewable terrestrial *grid* benchmark their orbital
-  case matches, not an absolute orbital intensity.
+**Ohs et al. (2025)**, "Dirty Bits in Low-Earth Orbit" — 52 (Starship) to 66
+(Falcon-9) g/kWh for a ~30 W eclipsed CubeSat with a ~4 kWh battery over 5 years,
+counting combustion CO₂ only. This is already close to the basis used here. The
+residual gap is one of inputs, not physics: starting from the mid-mass case (41 g/kWh;
+dawn–dusk orbit, 10-year life, central launch), stripping the non-CO₂ and methane terms
+to a combustion-only launch lowers it to ~28; switching to a heavily eclipsed generic
+LEO with its larger battery and oversized array raises it to ~41; and amortising over a
+5-year rather than 10-year life (doubling all one-time terms) brings it to ~81, into the
+upper part of the Ohs range.
 
-The gap is one of inputs, not physics. Starting from the mid-mass case (41 g/kWh;
-dawn–dusk orbit, 10-year life, central launch): stripping the non-CO₂ and methane
-terms to a combustion-only launch lowers it to ~28; switching to a heavily eclipsed
-generic LEO with its larger battery and oversized array raises it to ~41; and
-amortising over a 5-year rather than 10-year life (doubling all one-time terms) brings
-it to ~81, reaching the upper part of the Ohs range and slightly above. The headline
-difference is therefore driven by orbit choice, mission life, and launch-term scope,
-not by disagreement about the underlying physics.
+**Aili et al. (2025)**, *Nature Electronics* — report a life-cycle *carbon usage
+effectiveness* (CUE: total emissions per unit of IT energy), headlined at ~0.72
+kgCO₂e/kWh at a 4-year server life. Reproducing it from their Supplementary Table 11,
+~65% (about 465 g/kWh) is a corporate scope-3 *recurrent* term (business travel,
+purchased goods and services) that lies outside this study's physical boundary and is
+common to their ground baseline — which is why their orbital case "approaches" an
+all-renewable terrestrial data centre. Their Supplementary Table 10 nonetheless gives a
+full per-satellite component inventory (each computational satellite carries 3 Dell R740
+servers drawing 8,112 kWh/yr of IT energy), which `aili_harmonised()` re-expresses on
+this functional unit. The result is ~**250 gCO₂e/kWh** — the *highest* of the three
+orbital estimates, not the lowest — decomposed as:
+
+| Component (Aili's inputs, 4-yr life) | gCO₂e/kWh |
+|---|---:|
+| IT hardware — Dell R740 server manufacturing (970 kg/server) | ~90 |
+| Power + structure — Starlink-v1.0 bus + arrays (2,940 kg/sat) | ~90 |
+| Thermal — aluminium active cooler (490 kg/server) | ~45 |
+| Launch (Falcon-9 share, 790 kg/sat) | ~24 |
+| **Physical total** | **~250** |
+
+The launch term (~24) agrees closely with the value here; the excess is almost entirely
+hardware. Aili cost a constellation of existing Starlink-class satellites each carrying
+a few general-purpose servers — ~13× the embodied carbon per watt of a modern AI
+accelerator, a 260 kg bus carrying only ~1 kW of compute, and thick aluminium radiators
+in place of thin deployable panels. The purpose-built, compute-dense platforms actually
+proposed (Starcloud, Project Suncatcher) are far closer to the inputs used here, so the
+present estimate is the more representative of a real GW-scale orbital datacentre.
+Amortising Aili's own inventory over 10 rather than 4 years would itself roughly halve
+their figure to ~100 g/kWh.
 
 **Cross-check of the ground baseline.** The solar-plus-storage baseline can be checked
 against the open-source datacenter calculator at `offgridai.us`, which models a

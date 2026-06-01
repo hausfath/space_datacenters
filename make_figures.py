@@ -172,43 +172,66 @@ def fig_literature():
     tmid, rmid = tw('Space - mid')
     thi, rhi = tw('Space - high (conv. radiators)')
 
-    CW, CA, COH, COHL = C['space'], '#CC79A7', '#D55E00', '#E69F00'
-    # (label, value, range or None, colour, filled marker, approx?)
-    rows = [
-        ('This work · low mass\n(10 yr, dawn–dusk, +non-CO$_2$+CH$_4$)', tlo, rlo, CW, True, False),
-        ('This work · mid mass', tmid, rmid, CW, True, False),
-        ('This work · high mass', thi, rhi, CW, True, False),
-        ('Aili et al. 2025: orbital matches\nall-renewable terrestrial grid (CUE metric)', 20.0, None, CA, False, True),
-        ('Ohs et al. 2025 · solar only\n(no eclipse battery)', 6.9, (6.3, 7.5), COHL, True, False),
-        ('Ohs et al. 2025 · Starship\n(5 yr, +battery +re-entry)', 52.1, None, COH, True, False),
-        ('Ohs et al. 2025 · Falcon-9', 66.3, None, COH, True, False),
+    CW, COH, COHL = C['space'], '#D55E00', '#E69F00'
+    # point/range estimates on a comparable basis: (label, value, range or None, colour)
+    point_rows = [
+        ('This work · low mass\n(10 yr, dawn–dusk, +non-CO$_2$+CH$_4$)', tlo, rlo, CW),
+        ('This work · mid mass', tmid, rmid, CW),
+        ('This work · high mass', thi, rhi, CW),
+        ('Ohs et al. 2025 · solar only\n(no eclipse battery)', 6.9, (6.3, 7.5), COHL),
+        ('Ohs et al. 2025 · Starship\n(5 yr, +battery +re-entry)', 52.1, None, COH),
+        ('Ohs et al. 2025 · Falcon-9', 66.3, None, COH),
     ]
-    fig, ax = plt.subplots(figsize=(8.8, 5.6))
-    y = np.arange(len(rows))[::-1]
+    # Aili et al. (2025) re-expressed on this metric, decomposed (model is source of truth)
+    ah = M.aili_harmonised()
+    aili_segs = [('IT hardware (server mfg)',          ah['it'],              C['it']),
+                 ('Power + structure (bus + arrays)',  ah['power_structure'], C['solar_storage']),
+                 ('Thermal (Al active cooler)',        ah['thermal'],         '#882255'),
+                 ('Launch',                            ah['launch'],          C['launch'])]
+    aili_total = sum(ah.values())
+
+    nrows = len(point_rows) + 1
+    fig, ax = plt.subplots(figsize=(9.4, 6.0))
+    y = np.arange(nrows)[::-1]
 
     # decarbonised-ground range: nuclear (longer-term) -> solar+storage (near-term)
     g_nuc = M.GROUND_NUCLEAR_TOTAL
     g_sol = M.GROUND_NOGAS_TOTAL
     ax.axvspan(g_nuc, g_sol, color='#888888', alpha=0.12, zorder=0)
-    ax.text((g_nuc + g_sol) / 2, max(y) + 1.55,
+    ax.text((g_nuc + g_sol) / 2, max(y) + 0.72,
             'decarbonised ground (this work):\nnuclear ~%.0f $\\rightarrow$ solar+storage ~%.0f g kWh$^{-1}$'
-            % (g_nuc, g_sol), ha='center', va='top', fontsize=7.8, color='#555')
+            % (g_nuc, g_sol), ha='center', va='bottom', fontsize=7.6, color='#555')
 
-    for yi, (lab, val, rng, col, filled, approx) in zip(y, rows):
+    # comparable point/range estimates
+    for yi, (lab, val, rng, col) in zip(y[:len(point_rows)], point_rows):
         if rng:
             ax.plot([rng[0], rng[1]], [yi, yi], color=col, lw=2.2, zorder=3,
                     solid_capstyle='round')
-        ax.plot([val], [yi], 'o', color=col, mfc=(col if filled else 'white'),
-                mec=col, ms=9, mew=1.8, zorder=4)
-        ax.text(val, yi + 0.27, ('~' if approx else '') + f'{val:.0f}',
-                ha='center', va='bottom', fontsize=9, color=col, fontweight='bold')
+        ax.plot([val], [yi], 'o', color=col, mfc=col, mec=col, ms=9, mew=1.8, zorder=4)
+        ax.text(val, yi + 0.30, f'{val:.0f}', ha='center', va='bottom',
+                fontsize=9, color=col, fontweight='bold')
 
-    ax.set_yticks(y); ax.set_yticklabels([r[0] for r in rows], fontsize=8.6, linespacing=1.2)
+    # Aili decomposed bar (bottom row)
+    ya = y[-1]; left = 0.0
+    for seglab, segval, segcol in aili_segs:
+        ax.barh(ya, segval, left=left, height=0.55, color=segcol, edgecolor='white',
+                linewidth=0.7, zorder=3, label=seglab)
+        left += segval
+    ax.text(left + 4, ya, f'$\\approx${aili_total:.0f}', va='center', ha='left',
+            fontsize=9.5, color='#333', fontweight='bold')
+
+    labels = [r[0] for r in point_rows] + ['Aili et al. 2025\n(harmonised; physical terms)']
+    ax.set_yticks(y); ax.set_yticklabels(labels, fontsize=8.6, linespacing=1.2)
     ax.set_xlabel('Lifecycle GHG intensity (g CO$_2$e per kWh delivered)')
-    ax.set_xlim(0, 120); ax.set_ylim(-0.7, max(y) + 1.85)
+    ax.set_xlim(0, 290); ax.set_ylim(-0.7, max(y) + 1.35)
     ax.grid(axis='x', linestyle=':', alpha=0.45)
-    ax.text(0.99, 0.03, 'Gas-fired ground = 590 g kWh$^{-1}$ (off scale)',
-            transform=ax.transAxes, ha='right', va='bottom', fontsize=8.4, color=C['gas'])
+    ax.legend(loc='upper right', frameon=False, fontsize=8,
+              title='Aili components (harmonised)', title_fontsize=8)
+    ax.text(0.985, 0.30,
+            "Aili's full life-cycle CUE $=720$ (off scale); the\n"
+            "$\\approx$%.0f shown drops $\\sim$465 g kWh$^{-1}$ of corporate\n"
+            "overhead common to ground. Gas $=590$ (off scale)." % aili_total,
+            transform=ax.transAxes, ha='right', va='center', fontsize=7.4, color='#555')
     save(fig, "literature_comparison")
 
 

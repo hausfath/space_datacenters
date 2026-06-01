@@ -584,6 +584,55 @@ def monte_carlo(n=40000, seed=0):
     }
 
 
+# ----------------------------------------------------------------------------
+# Harmonisation of Aili et al. (2025), Nature Electronics, onto this metric
+# ----------------------------------------------------------------------------
+# Their headline is a life-cycle "carbon usage effectiveness" (CUE: total emissions
+# per unit IT energy) of ~0.7 kgCO2e/kWh at a 4-yr server life, which is NOT directly
+# comparable to the physical, delivered-energy intensity used here. Their Supplementary
+# Tables 4-11, however, give a full per-satellite component breakdown that we can
+# re-express on this study's basis. Each computational satellite carries 3 Dell R740
+# servers. One-time emissions (kgCO2e per satellite):
+AILI_SERVERS_PER_SAT        = 3
+AILI_C_SERVER_KG            = 970.0    # Dell R740 manufacturing, per server (SI Table 6)
+AILI_C_COOLER_KG            = 490.0    # Al active radiative cooler, per server (SI eq 24)
+AILI_C_CARRIER_KG           = 2940.0   # Starlink-v1.0 bus + solar arrays, per sat (SI eq 30)
+AILI_C_LAUNCH_KG            = 790.0    # Falcon-9 launch share, per sat (SI eq 35)
+AILI_E_IT_PER_SERVER_KWH_YR = 2704.0   # IT energy, light-medium workload (SI Table 5)
+AILI_SERVER_LIFE_YR         = 4        # their stated mean server lifespan
+# Coefficients to reproduce their full life-cycle CUE (SI Table 11):
+AILI_PUE         = 1.1
+AILI_I1, AILI_E1_E2 = 214.0, 0.02      # scope 1 (backup gen): intensity, energy ratio
+AILI_I3, AILI_E3RC_E2 = 271.0, 1.56    # scope 3 RECURRENT: intensity, energy ratio
+AILI_E3OT_E2     = 3.35                 # scope 3 one-time energy ratio (units: years)
+
+
+def aili_harmonised(server_life_yr=AILI_SERVER_LIFE_YR):
+    """Aili et al. (2025) orbital data centre re-expressed on this study's metric:
+    physical lifecycle emissions (gCO2e per kWh of IT energy delivered), broken into
+    the same kind of components used here. Excludes their corporate scope-3 *recurrent*
+    term (business travel, purchased services), which is outside this study's physical
+    boundary, is common to their ground baseline, and dominates their CUE (~65%)."""
+    e_it_life = AILI_SERVERS_PER_SAT * AILI_E_IT_PER_SERVER_KWH_YR * server_life_yr
+    g = lambda c_kg: c_kg * 1000.0 / e_it_life      # kgCO2e/sat -> gCO2e per kWh IT
+    return {
+        "it":              g(AILI_SERVERS_PER_SAT * AILI_C_SERVER_KG),   # server mfg
+        "power_structure": g(AILI_C_CARRIER_KG),                         # bus + arrays
+        "thermal":         g(AILI_SERVERS_PER_SAT * AILI_C_COOLER_KG),   # Al cooler
+        "launch":          g(AILI_C_LAUNCH_KG),                          # launch share
+    }
+
+
+def aili_full_cue(server_life_yr=AILI_SERVER_LIFE_YR):
+    """Reproduce Aili's full life-cycle CUE (gCO2e/kWh) and its split into the physical
+    one-time terms (comparable here) and the corporate scope-3 recurrent term (not)."""
+    onetime   = AILI_PUE * (AILI_E3OT_E2 / server_life_yr) * AILI_I3
+    recurrent = AILI_PUE * AILI_E3RC_E2 * AILI_I3
+    scope1    = AILI_PUE * AILI_E1_E2 * AILI_I1
+    return {"total": onetime + recurrent + scope1,
+            "physical_onetime": onetime + scope1, "recurrent": recurrent}
+
+
 if __name__ == "__main__":
     print(f"Functional unit: {P_GW} GW IT, {LIFE_YR} yr, CF {CF} -> {ENERGY_TWH:.1f} TWh delivered\n")
 
@@ -665,3 +714,14 @@ if __name__ == "__main__":
     for name, (p5, p50, p95) in mc.items():
         det = total(sc_det[name]) if name in sc_det else float('nan')
         print(f"   {name:<46} central {det:6.1f}   MC p50 {p50:5.1f}  [{p5:5.1f} - {p95:5.1f}]")
+
+    print("\n--- AILI et al. (2025) HARMONISED onto this metric (physical, g/kWh) ---")
+    ah = aili_harmonised()
+    print(f"   IT(server) {ah['it']:.0f} + power/struct {ah['power_structure']:.0f} + "
+          f"thermal {ah['thermal']:.0f} + launch {ah['launch']:.0f} = "
+          f"{sum(ah.values()):.0f} g/kWh (4-yr server life)")
+    cue = aili_full_cue()
+    print(f"   reproduces their full life-cycle CUE {cue['total']:.0f} g/kWh "
+          f"(physical {cue['physical_onetime']:.0f} + recurrent overhead "
+          f"{cue['recurrent']:.0f}, the latter ~{100*cue['recurrent']/cue['total']:.0f}% "
+          f"and common to ground)")
