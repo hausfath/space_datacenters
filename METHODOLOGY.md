@@ -57,6 +57,14 @@ is expressed per watt of IT load and per kWh delivered, the result does not depe
 the exact satellite count — only on the per-watt bus, array, radiator, and battery
 masses a modular constellation must build and launch.
 
+**The per-kWh results are invariant to the comparison-window length** (for fixed
+hardware lifetimes): doubling the window to 20 years doubles both the delivered energy
+and the number of hardware generations (4 GPU builds on the ground, 4 platform launches
+in orbit), leaving every intensity unchanged. Ground generation is costed at a per-kWh
+lifecycle intensity that already amortises the panels or reactor over their own
+multi-decade asset life — not over the datacenter window — so long-lived terrestrial
+generation is fully credited at any horizon.
+
 ## 2. Scenarios
 
 | Scenario | Power source |
